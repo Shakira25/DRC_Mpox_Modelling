@@ -1176,32 +1176,6 @@ points(date_vector, observed_data, col = "blue", pch = 16)
 
 
 
-```{r}
-
-#points(date_vector, observed_data, col = "blue", pch = 16)
-
-projection_df$infections_detected = projection_df$Id_c + projection_df$Id_a
-
-
-# Format the x-axis to show dates
-axis.Date(1, at = date_vector, format = "%b %Y")  # Custom format: "Month Year"
-legend("topleft", legend = c("Simulated Id", "Observed Data"), col = c("red", "blue"), lty = c(1, NA), pch=c(NA,16))
-
-# Plot the projection with dates on the x-axis
-print(
-  plot(projection_date_vector, projection_df$infections_detected, type = "l", col = "red", ylab = "Projected detected Infected Humans (Id)", xlab = "Date", xaxt = "n")
-)
-axis.Date(1, at = projection_date_vector, format = "%b %Y")
-
-
-#projection_df
-
-
-```
-
-
-
-
 ###############################################################################################
 ###############################################################################################
 
