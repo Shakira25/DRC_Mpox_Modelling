@@ -36,6 +36,159 @@ observed_data<-cases$new_cases #Extract the weekly case counts
 ```
 
 
+# Simulated model
+
+
+```{r}
+
+# Define base parameters
+base_params <- c(
+  
+  # Children parameters
+  beta_cc = 0.5,     # Transmission rate via child to child
+  beta_ac = 0.3,         # Transmission rate via adult to child
+  gamma_c = 0.05,              # Recovery rate for those who were infectious and remained in the general population 
+  sigma_c = 1/5,                # Detection rate
+  gamma_c_Id = 0.1,             # Recovery rate for those who were detected
+  rho_c_I = 0.01,                # Mortality rate for the infected people in the community
+  rho_c_Id = 0.009,               # Mortality rate for the infected people that were detected and isolated
+  
+  
+  # Adult parameters
+  beta_aa = 0.4,     # Transmission rate via adult to adult
+  beta_ca = 0.25,         # Transmission rate via child to adult 
+  gamma_a = 0.05,              # Recovery rate for those who were infectious and remained in the general population 
+  sigma_a = 1/5,                # Detection rate
+  gamma_a_Id = 0.1,             # Recovery rate for those who were detected
+  rho_a_I = 0.01,                # Mortality rate for the infected people in the community
+  rho_a_Id = 0.009               # Mortality rate for the infected people that were detected and isolated
+)
+
+# Define initial state
+initial_state <- c(
+  # Children population
+  S_c = 105e2,    # Susceptible
+  I_cc = 5,     # Infectious via the sexual route
+  I_ac = 20,     # Infectious via other routes
+  Id_c = 8,       # Detected population
+  R_c = 0,        # Recovered
+  D_c = 0,         # Dead
+  
+  
+  # adult population
+  S_a = 150e2,    # Susceptible
+  I_aa = 15,     # Infectious via the sexual route
+  I_ca = 10,     # Infectious via other routes
+  Id_a = 8,       # Detected population
+  R_a = 0,        # Recovered
+  D_a = 0         # Dead
+)
+
+# Define the time sequence for 57 weeks
+times <- seq(1, 365, by = 1)
+
+# Define the model function
+mpox_model <- function(time, state, parms) {
+  with(as.list(c(state, parms)), {
+    N_c <- S_c + I_cc + I_ac + Id_c + R_c + D_c
+    N_a <- S_a + I_aa + I_ca + Id_a + R_a + D_a
+    
+    
+    # Children population
+    dS_c <- -beta_cc * S_c * I_cc / N_c - beta_ac * S_c * I_ac / (N_c + N_a)
+    dI_cc <- beta_cc * S_c * I_cc / N_c - gamma_c * I_cc - sigma_c * I_cc - rho_c_I * I_cc
+    dI_ac <- beta_ac * S_c * I_ac / (N_c + N_a) - gamma_c * I_ac - sigma_c * I_ac - rho_c_I * I_ac
+    dId_c <- sigma_c * (I_cc + I_ac) - gamma_c_Id * Id_c - rho_c_Id * Id_c
+    dR_c <- gamma_c * (I_cc + I_ac) + gamma_c_Id * Id_c
+    dD_c <- rho_c_I * (I_cc + I_ac) + rho_c_Id * Id_c
+    
+    
+    # Adult population
+    dS_a <- -beta_aa * S_a * I_aa / N_a - beta_ca * S_a * I_ca / (N_c + N_a)
+    dI_aa <- beta_aa * S_a * I_aa / N_a - gamma_a * I_aa - sigma_a * I_aa - rho_a_I * I_aa
+    dI_ca <- beta_ca * S_a * I_ca / (N_c + N_a) - gamma_a * I_ca - sigma_a * I_ca - rho_a_I * I_ca
+    dId_a <- sigma_a * (I_aa + I_ca) - gamma_a_Id * Id_a - rho_a_Id * Id_a
+    dR_a <- gamma_a * (I_aa + I_ca) + gamma_a_Id * Id_a
+    dD_a <- rho_a_I * (I_aa + I_ca) + rho_a_Id * Id_a
+    
+    return(list(c(dS_c, dI_cc, dI_ac, dId_c, dR_c, dD_c,
+                  dS_a, dI_aa, dI_ca, dId_a, dR_a, dD_a)))
+  })
+}
+
+# Run the simulation with the correct model function
+simulation <- ode(y = initial_state, times = times, func = mpox_model, parms = base_params)
+
+# Convert the output to a data frame for analysis and plotting
+output <- as.data.frame(simulation)
+
+# Rename columns for clarity
+colnames(output) <- c("time", "Susceptible_children", 
+                      "Infectious_children_via_child_child_pathway", 
+                      "Infectious_children_via_adult_child_pathway",
+                      "Detected_children", 
+                      "Recovered_children", 
+                      "Dead_children",
+                      
+                      "Susceptible_adult", 
+                      "Infectious_adult_via_adult_adult_pathway", 
+                      "Infectious_adult_via_child_adult_pathway",
+                      "Detected_adult", 
+                      "Recovered_adult", 
+                      "Dead_adult")
+
+# Display the output
+print(output)
+
+# Plot the results
+library(ggplot2)
+ggplot(data = output, aes(x = time)) +
+  geom_line(aes(y = Susceptible_children, color = "Susceptible_children"), size = 1) +
+  geom_line(aes(y = Infectious_children_via_child_child_pathway, 
+                color = "Infectious_children_via_child_child_pathway"), size = 1) +
+  geom_line(aes(y = Infectious_children_via_adult_child_pathway, 
+                color = "Infectious_children_via_adult_child_pathway"), size = 1) +
+  geom_line(aes(y = Detected_children, color = "Detected_children"), size = 1) +
+  geom_line(aes(y = Recovered_children, color = "Recovered_children"), size = 1) +
+  geom_line(aes(y = Dead_children, color = "Dead_children"), size = 1) +
+  
+  
+  geom_line(aes(y = Susceptible_adult, color = "Susceptible_adult"), size = 1) +
+  geom_line(aes(y = Infectious_adult_via_adult_adult_pathway, 
+                color = "Infectious_adult_via_adult_adult_pathway"), size = 1) +
+  geom_line(aes(y = Infectious_adult_via_child_adult_pathway, 
+                color = "Infectious_adult_via_child_adult_pathway"), size = 1) +
+  geom_line(aes(y = Detected_adult, color = "Detected_adult"), size = 1) +
+  geom_line(aes(y = Recovered_adult, color = "Recovered_adult"), size = 1) +
+  geom_line(aes(y = Dead_adult, color = "Dead_adult"), size = 1) +
+  
+  
+  labs(title = "SIRD Model Simulation", x = "Time (weeks)", y = "Population") +
+  scale_color_manual("", 
+                     breaks = c("Susceptible_children", 
+                      "Infectious_children_via_child_child_pathway", 
+                      "Infectious_children_via_adult_child_pathway",
+                      "Detected_children", 
+                      "Recovered_children", 
+                      "Dead_children",
+                      
+                      "Susceptible_adult", 
+                      "Infectious_adult_via_adult_adult_pathway", 
+                      "Infectious_adult_via_child_adult_pathway",
+                      "Detected_adult", 
+                      "Recovered_adult", 
+                      "Dead_adult"),
+                     values = c("blue", "red", "purple", "orange", "green", "black",
+                                "pink","darkred","cyan","darkgreen","darkblue","brown")) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+
+```
+
+
+# Model simulations with parameter estimations
 
 
 ```{r}
