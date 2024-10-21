@@ -30,11 +30,10 @@ library(MASS)
 
 
 ```{r}
-cases<-read.csv("C:/Users/bbrsh/Desktop/Shakira/Shakira/Infectious diseases modelling opportunity Kwame Nkuruma/Hands On/Group 4 things/MPox_docs/Shakira/mpox_2024.csv")
+cases<-read.csv("mpox_2024.csv")
 observed_data<-cases$new_cases #Extract the weekly case counts
 
 ```
-
 
 
 
